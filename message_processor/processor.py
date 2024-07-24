@@ -1,9 +1,8 @@
 import json
 import asyncio
-import aio_pika
 from aio_pika import connect_robust
 
-from message_processor.utils.logging import logger
+from datetime import datetime
 
 # Configuration
 RABBITMQ_URL = "amqp://root:password@rabbitmq/"
@@ -15,18 +14,20 @@ async def process_message(message):
         message_body = message.body.decode()
         data = json.loads(message_body)
         print(f"Processing message: {data}")
-        logger.info(f"Processing message: {data}")
 
-        # Implement your business logic here
-        # For example, handle message types or route to different services
-        if data['type'] == 'text':
-            print("Processing text message")
-        elif data['type'] == 'voice':
-            print("Processing voice message")
-        elif data['type'] == 'video':
-            print("Processing video message")
+        # Implement time-based acceptance logic
+        current_hour = datetime.now().hour
+        if data['type'] == 'text' and 5 <= current_hour < 24:
+            print("Text message accepted")
+            # Generate and send a text reply
+        elif data['type'] == 'voice' and 8 <= current_hour < 12:
+            print("Voice message accepted")
+            # Generate and send a voice reply
+        elif data['type'] == 'video' and 20 <= current_hour < 24:
+            print("Video message accepted")
+            # Generate and send a video reply
         else:
-            print(f"Unknown message type: {data['type']}")
+            print(f"Message rejected: {data['type']} not accepted at this time")
 
 
 async def main():
@@ -35,7 +36,6 @@ async def main():
 
     # Declare the queue
     queue = await channel.declare_queue(QUEUE_NAME, durable=True)
-
     await queue.consume(process_message, no_ack=False)
 
     print(f"Waiting for messages in {QUEUE_NAME}. To exit press CTRL+C")
