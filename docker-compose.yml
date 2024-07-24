@@ -1,0 +1,71 @@
+version: '3.9'
+
+services:
+  websocket_server:
+    build:
+      context: websocket_server
+      dockerfile: Dockerfile.websocket
+    container_name: comm_websocket_server
+    ports:
+      - "8000:8000"
+    depends_on:
+      - rabbitmq
+      - redis
+      - db
+    networks:
+      - client-server
+
+  api_server:
+    build:
+      context: api_server
+      dockerfile: Dockerfile.api
+    container_name: comm_api_server
+    ports:
+      - "8001:8001"
+    depends_on:
+      - redis
+      - db
+    networks:
+      - client-server
+
+  rabbitmq:
+    image: rabbitmq:3.6-management-alpine
+    container_name: comm_rabbitmq
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-root}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PWD:-password}
+      - RABBITMQ_DEFAULT_VHOST=/
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - client-server
+
+  redis:
+    image: redis:6.2-alpine
+    container_name: comm_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - client-server
+
+  db:
+    image: postgres:14.2-alpine
+    container_name: comm_db
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - client-server
+
+volumes:
+  postgres_data:
+
+networks:
+  client-server:
+    driver: bridge

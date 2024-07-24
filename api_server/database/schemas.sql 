@@ -1,0 +1,8 @@
+-- api_server/db/schemas.sql
+
+CREATE TABLE IF NOT EXISTS messages (
+    id SERIAL PRIMARY KEY,
+    content TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
