@@ -4,12 +4,21 @@ import json
 import redis.asyncio as aioredis
 import random
 
+import asyncpg
+
+
 # Configuration
 REDIS_URL = "redis://redis:6379/0"
+
 MAX_CONNECTIONS = 50
 MAX_CONCURRENT_MESSAGES = 500
+
 HEARTBEAT_INTERVAL = 30  # seconds
 HEARTBEAT_TIMEOUT = 10  # seconds
+
+DATABASE_URL = "postgresql://postgres:postgres@db/postgres"
+# Database connection pool
+db_pool = None
 
 # In-memory store for active connections and message tracking
 active_connections = {}
@@ -72,6 +81,9 @@ async def handle_message(client_id, websocket, message):
         # Process the message
         message_data = json.loads(message)
         message_type = message_data.get("type")
+        content = message_data.get("content", "")
+
+        await save_message_to_db(client_id, content, message_type)
 
         if message_type == "text":
             response_time = random.uniform(0, 1)
@@ -92,7 +104,17 @@ async def handle_message(client_id, websocket, message):
         print(f"Completed processing message from {client_id} with reply: {reply}")
 
 
+async def save_message_to_db(client_id, content, message_type):
+    async with db_pool.acquire() as connection:
+        await connection.execute(
+            "INSERT INTO messages (client_id, content, type) VALUES ($1, $2, $3)",
+            client_id, content, message_type
+        )
+
+
 async def main():
+    global db_pool
+    db_pool = await asyncpg.create_pool(DATABASE_URL)
     redis = aioredis.from_url(REDIS_URL)
     server = await websockets.serve(register, "0.0.0.0", 8000)
     await server.wait_closed()
