@@ -2,7 +2,7 @@ from fastapi import FastAPI
 import asyncpg
 import redis.asyncio as aioredis
 from contextlib import asynccontextmanager
-from models.message import Message
+from validate.message import Message
 
 app = FastAPI()
 

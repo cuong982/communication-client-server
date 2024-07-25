@@ -8,25 +8,35 @@ services:
     container_name: comm_websocket_server
     ports:
       - "8000:8000"
+    volumes:
+      - ./websocket_server:/app  # Mount the local directory to the container
+      - /app/__pycache__/  # Exclude cache to avoid conflicts
     depends_on:
       - rabbitmq
       - redis
       - db
     networks:
       - client-server
+    environment:
+      - PYTHONUNBUFFERED=1
 
   api_server:
     build:
-      context: api_server
+      context: app
       dockerfile: Dockerfile.api
     container_name: comm_api_server
     ports:
       - "8001:8001"
+    volumes:
+      - ./app:/app  # Mount the local directory to the container
+      - /app/__pycache__/  # Exclude cache to avoid conflicts
     depends_on:
       - redis
       - db
     networks:
       - client-server
+    environment:
+      - PYTHONUNBUFFERED=1
 
   rabbitmq:
     image: rabbitmq:3.6-management-alpine
@@ -60,6 +70,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - client-server
+
+  adminer:
+    image: adminer
+    ports:
+      - "5555:8080"
     networks:
       - client-server
 

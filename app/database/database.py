@@ -1,5 +1,6 @@
 import asyncpg
 
+
 class Database:
     def __init__(self, dsn):
         self.dsn = dsn
