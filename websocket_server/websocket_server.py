@@ -1,21 +1,18 @@
 import asyncio
+
+import aio_pika
 import websockets
 import json
-import redis.asyncio as aioredis
-import random
-
-import asyncpg
 
 
 # Configuration
 REDIS_URL = "redis://redis:6379/0"
-
+RABBITMQ_URL = "amqp://root:password@rabbitmq:5672//"
+QUEUE_NAME = "messages"
 MAX_CONNECTIONS = 50
 MAX_CONCURRENT_MESSAGES = 500
-
 HEARTBEAT_INTERVAL = 30  # seconds
 HEARTBEAT_TIMEOUT = 10  # seconds
-
 DATABASE_URL = "postgresql://postgres:postgres@db/postgres"
 # Database connection pool
 db_pool = None
@@ -26,6 +23,18 @@ message_sent_flags = {}
 
 # Semaphore to limit concurrent message processing
 semaphore = asyncio.Semaphore(MAX_CONCURRENT_MESSAGES)
+
+
+async def setup_rabbitmq():
+    try:
+        connection = await aio_pika.connect_robust("amqp://root:password@rabbitmq:5672//")
+        print("-----------", connection)
+        channel = await connection.channel()
+        await channel.declare_queue(QUEUE_NAME, durable=True)
+        return connection, channel
+    except aio_pika.exceptions.AMQPConnectionError:
+        print("Failed to connect to RabbitMQ, retrying...")
+        await asyncio.sleep(5)
 
 
 async def heartbeat(websocket):
@@ -42,7 +51,7 @@ async def heartbeat(websocket):
             break
 
 
-async def register(websocket, path):
+async def register(websocket, path, channel):
     client_id = path.strip("/")
     if client_id in active_connections:
         await websocket.send(json.dumps({"error": "Already connected"}))
@@ -58,7 +67,7 @@ async def register(websocket, path):
 
     try:
         async for message in websocket:
-            await handle_message(client_id, websocket, message)
+            await handle_message(client_id, websocket, message, channel)
     finally:
         await unregister(client_id)
 
@@ -72,7 +81,7 @@ async def unregister(client_id):
         print(f"{client_id} disconnected.")
 
 
-async def handle_message(client_id, websocket, message):
+async def handle_message(client_id, websocket, message, channel):
     async with semaphore:
         print(f"Processing message from {client_id}")
         # Mark that the client has sent at least one message
@@ -83,40 +92,32 @@ async def handle_message(client_id, websocket, message):
         message_type = message_data.get("type")
         content = message_data.get("content", "")
 
-        await save_message_to_db(client_id, content, message_type)
+        # Send the message to RabbitMQ
+        await send_message_to_queue(client_id, content, message_type, channel)
 
-        if message_type == "text":
-            response_time = random.uniform(0, 1)
-            await asyncio.sleep(response_time)
-            reply = {"type": "text", "content": "Text message reply"}
-        elif message_type == "voice":
-            response_time = random.uniform(1, 2)
-            await asyncio.sleep(response_time)
-            reply = {"type": "voice", "content": "Voice message reply with text and voice"}
-        elif message_type == "video":
-            response_time = random.uniform(2, 3)
-            await asyncio.sleep(response_time)
-            reply = {"type": "video", "content": "Video message reply with text, voice, and image"}
-        else:
-            reply = {"error": "Unknown message type"}
-
+        # Reply based on the type of message received
+        reply = {"type": message_type, "content": f"{message_type} message reply"}
         await websocket.send(json.dumps(reply))
         print(f"Completed processing message from {client_id} with reply: {reply}")
 
 
-async def save_message_to_db(client_id, content, message_type):
-    async with db_pool.acquire() as connection:
-        await connection.execute(
-            "INSERT INTO messages (client_id, content, type) VALUES ($1, $2, $3)",
-            client_id, content, message_type
-        )
+async def send_message_to_queue(client_id, content, message_type, channel):
+    message_body = json.dumps({
+        "client_id": client_id,
+        "content": content,
+        "type": message_type
+    })
+    message = aio_pika.Message(
+        body=message_body.encode(),
+        delivery_mode=aio_pika.DeliveryMode.PERSISTENT
+    )
+    await channel.default_exchange.publish(message, routing_key=QUEUE_NAME)
 
 
 async def main():
-    global db_pool
-    db_pool = await asyncpg.create_pool(DATABASE_URL)
-    redis = aioredis.from_url(REDIS_URL)
-    server = await websockets.serve(register, "0.0.0.0", 8000)
+    connection, channel = await setup_rabbitmq()
+    server = await websockets.serve(lambda ws, path: register(ws, path, channel), "0.0.0.0", 8000)
+    print("WebSocket server started")
     await server.wait_closed()
 
 

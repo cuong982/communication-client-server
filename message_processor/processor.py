@@ -1,11 +1,10 @@
 import json
 import asyncio
-from aio_pika import connect_robust
-
+import aio_pika
 from datetime import datetime
 
 # Configuration
-RABBITMQ_URL = "amqp://root:password@rabbitmq/"
+RABBITMQ_URL = "amqp://root:password@rabbitmq:5672//"
 QUEUE_NAME = "messages"
 
 
@@ -30,19 +29,22 @@ async def process_message(message):
             print(f"Message rejected: {data['type']} not accepted at this time")
 
 
+async def connect_to_rabbitmq():
+    while True:
+        try:
+            connection = await aio_pika.connect_robust(RABBITMQ_URL)
+            return connection
+        except aio_pika.exceptions.AMQPConnectionError:
+            print("Failed to connect to RabbitMQ, retrying...")
+            await asyncio.sleep(5)
+
+
 async def main():
-    connection = await connect_robust(RABBITMQ_URL)
+    connection = await connect_to_rabbitmq()
     channel = await connection.channel()
-
-    # Declare the queue
-    queue = await channel.declare_queue(QUEUE_NAME, durable=True)
+    queue = await channel.declare_queue("messages", durable=True)
     await queue.consume(process_message, no_ack=False)
-
-    print(f"Waiting for messages in {QUEUE_NAME}. To exit press CTRL+C")
-    try:
-        await asyncio.Future()  # Run forever
-    finally:
-        await connection.close()
+    print("Waiting for messages...")
 
 
 if __name__ == "__main__":
