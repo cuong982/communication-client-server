@@ -22,13 +22,13 @@ services:
 
   api_server:
     build:
-      context: app
+      context: api_server
       dockerfile: Dockerfile.api
     container_name: comm_api_server
     ports:
       - "8001:8001"
     volumes:
-      - ./app:/app  # Mount the local directory to the container
+      - ./api_server:/app  # Mount the local directory to the container
       - /app/__pycache__/  # Exclude cache to avoid conflicts
     depends_on:
       - redis
