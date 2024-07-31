@@ -1,10 +1,21 @@
 import json
 import asyncio
+import logging
+
 import aio_pika
 from datetime import datetime
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[
+        logging.FileHandler("logs/message_processor.log"),
+        logging.StreamHandler()
+    ]
+)
+
 # Configuration
-RABBITMQ_URL = "amqp://root:password@rabbitmq:5672//"
+RABBITMQ_URL = "amqp://root:password@rabbitmq:5672/"
 QUEUE_NAME = "messages"
 
 
@@ -45,6 +56,11 @@ async def main():
     queue = await channel.declare_queue("messages", durable=True)
     await queue.consume(process_message, no_ack=False)
     print("Waiting for messages...")
+
+    try:
+        await asyncio.Future()
+    finally:
+        await connection.close()
 
 
 if __name__ == "__main__":

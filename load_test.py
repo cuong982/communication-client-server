@@ -4,9 +4,11 @@ import json
 import random
 import string
 
+# TODO: using test for testing
+
 # Configuration
-NUM_CLIENTS = 100
-TOTAL_MESSAGES = 1000
+NUM_CLIENTS = 40
+TOTAL_MESSAGES = 40
 SERVER_URL = "ws://localhost:8000"  # Replace with your WebSocket server URL
 MESSAGE_TYPES = ["text", "voice", "video"]
 

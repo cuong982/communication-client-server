@@ -66,3 +66,5 @@ the system's ability to scale and handle multiple users concurrently.
  which is vital for a responsive application.
 
 ```
+
+## I haven't finished setting up all the projects yet, I have just completed the api service. The problem occurs when setting up websocket to push messages to Rabbitmq. But please check my logic and process to build this application

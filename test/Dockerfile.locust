@@ -1,0 +1,14 @@
+FROM locustio/locust:latest
+
+# Set the working directory in the container
+WORKDIR /mnt
+
+# Copy the locustfile and necessary scripts
+COPY locustfile.py /mnt/main.py
+COPY requirements.txt /mnt/requirements.txt
+COPY . /mnt
+
+# Install any additional Python packages
+RUN pip install -r /mnt/requirements.txt
+
+CMD ["-f", "/mnt/locustfile.py"]

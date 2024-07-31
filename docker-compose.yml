@@ -19,7 +19,7 @@ services:
       - client-server
     environment:
       - PYTHONUNBUFFERED=1
-      - RABBITMQ_URL=amqp://root:password@rabbitmq:5672//
+      - RABBITMQ_URL=amqp://root:password@localhost:5672/
 
   api_server:
     build:
@@ -44,6 +44,7 @@ services:
     build:
       context: message_processor
       dockerfile: Dockerfile.processor
+    restart: always
     volumes:
       - ./message_processor:/app
     depends_on:
@@ -54,15 +55,17 @@ services:
       - RABBITMQ_URL=amqp://root:password@rabbitmq:5672//
 
   rabbitmq:
-    image: rabbitmq:3.6-management-alpine
-    container_name: comm_rabbitmq
-    environment:
-      - RABBITMQ_DEFAULT_USER=root
-      - RABBITMQ_DEFAULT_PASS=password
-      - RABBITMQ_DEFAULT_VHOST=/
+    image: rabbitmq:3.11.11-management
+    restart: always
+    env_file:
+      - .env
     ports:
-      - "5672:5672"
       - "15672:15672"
+    healthcheck:
+      test: [ "CMD", "rabbitmqctl", "status" ]
+      interval: 10s
+      timeout: 10s
+      retries: 5
     networks:
       - client-server
 
@@ -94,6 +97,21 @@ services:
       - "5555:8080"
     networks:
       - client-server
+
+  locust:
+    build:
+      context: test
+      dockerfile: Dockerfile.locust
+    container_name: locust
+    volumes:
+      - ./test:/mnt
+    command: -f /mnt/locustfile.py --host=http://websocket_server:8000
+    ports:
+      - "8089:8089"
+    networks:
+      - client-server
+    depends_on:
+      - websocket_server
 
 volumes:
   postgres_data:

@@ -1,0 +1,3 @@
+locust
+websockets
+websocket-client

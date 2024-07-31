@@ -1,13 +1,23 @@
 import asyncio
+import logging
 
 import aio_pika
 import websockets
 import json
 
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(levelname)s %(message)s',
+    handlers=[
+        logging.FileHandler("logs/websocket.log"),
+        logging.StreamHandler()
+    ]
+)
+
 
 # Configuration
 REDIS_URL = "redis://redis:6379/0"
-RABBITMQ_URL = "amqp://root:password@rabbitmq:5672//"
+RABBITMQ_URL = "amqp://root:password@rabbitmq:5672/"
 QUEUE_NAME = "messages"
 MAX_CONNECTIONS = 50
 MAX_CONCURRENT_MESSAGES = 500
@@ -26,15 +36,13 @@ semaphore = asyncio.Semaphore(MAX_CONCURRENT_MESSAGES)
 
 
 async def setup_rabbitmq():
-    try:
-        connection = await aio_pika.connect_robust("amqp://root:password@rabbitmq:5672//")
-        print("-----------", connection)
-        channel = await connection.channel()
-        await channel.declare_queue(QUEUE_NAME, durable=True)
-        return connection, channel
-    except aio_pika.exceptions.AMQPConnectionError:
-        print("Failed to connect to RabbitMQ, retrying...")
-        await asyncio.sleep(5)
+    while True:
+        try:
+            connection = await aio_pika.connect_robust(RABBITMQ_URL)
+            return connection
+        except aio_pika.exceptions.AMQPConnectionError:
+            print("Failed to connect to RabbitMQ, retrying...")
+            await asyncio.sleep(5)
 
 
 async def heartbeat(websocket):
@@ -115,7 +123,9 @@ async def send_message_to_queue(client_id, content, message_type, channel):
 
 
 async def main():
-    connection, channel = await setup_rabbitmq()
+    connection = await setup_rabbitmq()
+    channel = await connection.channel()
+    await channel.declare_queue(QUEUE_NAME, durable=True)
     server = await websockets.serve(lambda ws, path: register(ws, path, channel), "0.0.0.0", 8000)
     print("WebSocket server started")
     await server.wait_closed()
