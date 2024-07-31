@@ -1,6 +1,7 @@
 import pika
 import json
 
+
 def consume_messages(callback):
     connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()

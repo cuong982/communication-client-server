@@ -42,7 +42,7 @@ This component ensures that each client can only connect once and
 that the maximum number of concurrent connections is respected.
 ```
 
-### Message Processing and Routing:
+#### Message Processing and Routing:
 ```
 The WebSocket server is the first point of contact for all client
  messages. It validates and routes messages to the appropriate 
@@ -50,7 +50,7 @@ The WebSocket server is the first point of contact for all client
  messages to RabbitMQ for asynchronous handling.
 ```
 
-### Scalability and Performance
+#### Scalability and Performance
 ```
 The WebSocket server's efficiency and reliability directly impact 
 the system's ability to scale and handle multiple users concurrently.
@@ -58,7 +58,7 @@ the system's ability to scale and handle multiple users concurrently.
  and a degraded user experience.
 ```
 
-### User Experience:
+#### User Experience:
 ```
 ```As the component directly interacting with clients, the WebSocket
  server plays a crucial role in the user experience. It provides 
@@ -67,4 +67,13 @@ the system's ability to scale and handle multiple users concurrently.
 
 ```
 
-## I haven't finished setting up all the projects yet, I have just completed the api service. The problem occurs when setting up websocket to push messages to Rabbitmq. But please check my logic and process to build this application
+### How can run test:
+
+#### Access http://localhost:8089/
+Setup new load test, click **Start**
+![locust.png](doc/locust.png)
+
+
+### Access http://localhost:15672/
+Check the message send to queue
+![rabbitmq.png](doc/rabbitmq.png)

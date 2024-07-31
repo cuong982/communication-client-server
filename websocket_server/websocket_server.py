@@ -48,11 +48,12 @@ async def setup_rabbitmq():
 async def heartbeat(websocket):
     while True:
         try:
-            await websocket.send(json.dumps({"type": "ping"}))
+            await websocket.send(json.dumps({"check_connection": "PING"}))
             pong = await asyncio.wait_for(websocket.recv(), HEARTBEAT_TIMEOUT)
             pong_data = json.loads(pong)
-            if pong_data.get("type") != "pong":
+            if "check_connection" in pong_data and pong_data.get("check_connection") != "PONG":
                 raise ValueError("Invalid pong response")
+            print("keep connection ...")
             await asyncio.sleep(HEARTBEAT_INTERVAL)
         except (asyncio.TimeoutError, websockets.exceptions.ConnectionClosed):
             print("Connection lost during heartbeat")
@@ -64,14 +65,18 @@ async def register(websocket, path, channel):
     if client_id in active_connections:
         await websocket.send(json.dumps({"error": "Already connected"}))
         return
-    if len(active_connections) >= MAX_CONNECTIONS:
-        await websocket.send(json.dumps({"error": "Max connections reached"}))
-        return
+    # if len(active_connections) >= MAX_CONNECTIONS:
+    #     await websocket.send(json.dumps({"error": "Max connections reached"}))
+    #     return
 
     active_connections[client_id] = websocket
     message_sent_flags[client_id] = False  # Initially, no message sent
     await websocket.send(json.dumps({"message": "Connected"}))
     print(f"{client_id} connected.")
+
+    # Start heartbeat task
+    # No need to await; it runs concurrently
+    asyncio.create_task(heartbeat(websocket))
 
     try:
         async for message in websocket:
@@ -97,6 +102,8 @@ async def handle_message(client_id, websocket, message, channel):
 
         # Process the message
         message_data = json.loads(message)
+        if not isinstance(message_data, dict):
+            message_data = json.loads(message_data)
         message_type = message_data.get("type")
         content = message_data.get("content", "")
 
