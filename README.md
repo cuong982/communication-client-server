@@ -20,7 +20,7 @@ sudo docker-compose up -d
 ```commandline
 alembic upgrade head
 ```
-
+---
 ## Which component is importance
 ### WebSocket Server
 
@@ -67,13 +67,38 @@ the system's ability to scale and handle multiple users concurrently.
 
 ```
 
-### How can run test:
+---
 
-#### Access http://localhost:8089/
-Setup new load test, click **Start**
-![locust.png](doc/locust.png)
+### How to Run Tests
 
+#### Setting Up the Load Test on Localhost
+To set up a new load test on your local environment, follow these steps:
 
-### Access http://localhost:15672/
-Check the message send to queue
-![rabbitmq.png](doc/rabbitmq.png)
+1. Open your web browser and go to [http://localhost:8089/](http://localhost:8089/).
+2. Configure the new load test by setting the desired values.
+3. Once configured, click **Start** to initiate the test.
+
+![Load Test Setup](doc/locust.png)
+
+#### Viewing Queue Messages
+To monitor messages sent to the queue, access the RabbitMQ management interface:
+
+1. Navigate to [http://localhost:15672/](http://localhost:15672/).
+2. Check the relevant queues to view the messages.
+
+![RabbitMQ Interface](doc/rabbitmq.png)
+
+#### Viewing Logs
+For troubleshooting and monitoring purposes, you can view logs for various services:
+
+- **WebSocket Server Logs:**
+  ```
+  /websocket_server/logs/websocket.log
+  ```
+
+- **Message Processor Logs:**
+  ```
+  /message_processor/logs/message_processor.log
+  ```
+
+---
